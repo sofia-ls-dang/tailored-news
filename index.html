@@ -11,7 +11,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -36,8 +36,20 @@
     .no-scrollbar { scrollbar-width: none; }
     .safe-bottom { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
     .safe-top { padding-top: max(1rem, env(safe-area-inset-top)); }
+    .safe-top-sm { padding-top: max(0.5rem, env(safe-area-inset-top)); }
     .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     :focus-visible { outline: 3px solid #3B5BDB; outline-offset: 2px; border-radius: 12px; }
+
+    /* Reader typography (driven by the Aa settings) */
+    :root {
+      --reader-font: 'Atkinson Hyperlegible', 'Inter', system-ui, sans-serif;
+      --reader-size: 18px;
+    }
+    .reader-font { font-family: var(--reader-font); }
+    .reader-body { font-size: var(--reader-size); line-height: 1.8; letter-spacing: 0.005em; }
+    .reader-body p + p { margin-top: 1.4em; }
+    .reader-facts { font-size: calc(var(--reader-size) - 1px); line-height: 1.6; }
+
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; animation: none !important; }
     }
@@ -48,32 +60,76 @@
   <!-- App shell: centered column so it looks intentional on desktop -->
   <div class="relative mx-auto min-h-screen w-full max-w-md bg-canvas md:border-x md:border-black/5">
 
-    <!-- Header -->
-    <header class="safe-top flex items-center justify-between px-5 pb-3">
-      <div>
+    <!-- ============================ HOME VIEW ============================ -->
+    <div id="homeView">
+      <header class="safe-top px-5 pb-3">
         <p id="todayLabel" class="text-xs font-medium uppercase tracking-wider text-ink/50"></p>
         <h1 class="text-2xl font-extrabold tracking-tight">Daily Intelligence</h1>
+      </header>
+
+      <main class="px-5 pb-32">
+        <!-- Hero / Featured -->
+        <section aria-label="Top story" id="hero" class="mb-6"></section>
+
+        <!-- Category tabs -->
+        <nav aria-label="Categories" class="-mx-5 mb-4">
+          <div id="tabs" role="tablist" class="no-scrollbar flex gap-2 overflow-x-auto px-5 py-1"></div>
+        </nav>
+
+        <!-- Feed -->
+        <section aria-label="News feed">
+          <div id="feed" class="flex flex-col gap-3" role="tabpanel"></div>
+          <p id="empty" class="hidden py-12 text-center text-sm text-ink/50">Nothing here yet. You're all caught up.</p>
+        </section>
+      </main>
+    </div>
+
+    <!-- ============================ READER VIEW ========================== -->
+    <div id="readerView" class="hidden">
+      <!-- Thin reading progress bar -->
+      <div class="fixed inset-x-0 top-0 z-30 mx-auto h-1 w-full max-w-md bg-transparent">
+        <div id="progress" class="h-full w-0 bg-accent"></div>
       </div>
-    </header>
 
-    <main class="px-5 pb-32">
-      <!-- Hero / Featured -->
-      <section aria-label="Top story" id="hero" class="mb-6"></section>
+      <!-- Sticky top bar -->
+      <div class="sticky top-0 z-20 bg-canvas/90 backdrop-blur">
+        <div class="safe-top-sm relative flex items-center justify-between px-4 pb-2">
+          <button type="button" data-back aria-label="Back to feed"
+            class="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/5 active:scale-95 transition">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+          </button>
 
-      <!-- Category tabs -->
-      <nav aria-label="Categories" class="-mx-5 mb-4">
-        <div id="tabs" role="tablist" class="no-scrollbar flex gap-2 overflow-x-auto px-5 py-1"></div>
-      </nav>
+          <div class="flex items-center gap-2">
+            <button id="prefsToggle" type="button" aria-label="Text settings" aria-expanded="false"
+              class="flex h-12 w-12 items-center justify-center rounded-full bg-white text-base font-bold shadow-sm ring-1 ring-black/5 active:scale-95 transition">
+              Aa
+            </button>
+            <button id="readerBookmark" type="button" data-bookmark="" aria-pressed="false" aria-label="Bookmark story"
+              class="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/5 active:scale-95 transition"></button>
+          </div>
 
-      <!-- Feed -->
-      <section aria-label="News feed">
-        <div id="feed" class="flex flex-col gap-3" role="tabpanel"></div>
-        <p id="empty" class="hidden py-12 text-center text-sm text-ink/50">Nothing here yet. You're all caught up.</p>
-      </section>
-    </main>
+          <!-- Text settings popover -->
+          <div id="prefsPanel" class="absolute right-4 top-full z-30 hidden w-64 rounded-3xl bg-white p-4 shadow-xl ring-1 ring-black/5">
+            <p class="mb-2 text-xs font-bold uppercase tracking-wider text-ink/50">Font</p>
+            <div class="mb-4 grid grid-cols-2 gap-2">
+              <button type="button" data-font="atkinson" class="rounded-2xl px-3 py-3 text-sm font-semibold ring-1 ring-black/10" style="font-family:'Atkinson Hyperlegible',sans-serif">Atkinson</button>
+              <button type="button" data-font="inter" class="rounded-2xl px-3 py-3 text-sm font-semibold ring-1 ring-black/10" style="font-family:'Inter',sans-serif">Inter</button>
+            </div>
+            <p class="mb-2 text-xs font-bold uppercase tracking-wider text-ink/50">Text size</p>
+            <div class="flex items-center justify-between gap-2">
+              <button type="button" data-size="-1" aria-label="Smaller text" class="h-12 flex-1 rounded-2xl text-sm font-bold ring-1 ring-black/10 active:scale-95 transition">A&minus;</button>
+              <span id="sizeLabel" class="w-12 text-center text-sm font-semibold text-ink/60">18</span>
+              <button type="button" data-size="1" aria-label="Larger text" class="h-12 flex-1 rounded-2xl text-lg font-bold ring-1 ring-black/10 active:scale-95 transition">A+</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <!-- Bottom navigation (docked, floating pill) -->
-    <div class="pointer-events-none fixed inset-x-0 bottom-0 z-20">
+      <main id="readerContent" class="reader-font px-5 pb-16 pt-2"></main>
+    </div>
+
+    <!-- Bottom navigation (home only) -->
+    <div id="bottomNav" class="pointer-events-none fixed inset-x-0 bottom-0 z-20">
       <div class="mx-auto w-full max-w-md px-5 safe-bottom">
         <nav aria-label="Primary" class="pointer-events-auto flex items-center justify-around rounded-full bg-ink px-2 py-2 shadow-xl shadow-black/20">
           <button data-nav="home" type="button" aria-label="Home" aria-current="page"
@@ -99,7 +155,7 @@
 
     <!-- Toast -->
     <div id="toast" role="status" aria-live="polite"
-      class="pointer-events-none fixed inset-x-0 bottom-28 z-30 mx-auto w-fit max-w-[90%] translate-y-2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-white opacity-0 shadow-lg transition"></div>
+      class="pointer-events-none fixed inset-x-0 bottom-28 z-40 mx-auto w-fit max-w-[90%] translate-y-2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-white opacity-0 shadow-lg transition"></div>
   </div>
 
   <script>
@@ -109,8 +165,14 @@
      *   const ARTICLES = (await (await fetch('brief.json')).json()).articles;
      * Expected fields per article:
      *   id, category ('politics'|'technology'|'sports'), categoryLabel,
-     *   headline, publisher, readMinutes, minutesAgo (or publishedAt ISO), image, featured
+     *   headline, publisher, readMinutes, minutesAgo (or publishedAt ISO),
+     *   image (thumbnail), imageLarge (optional, reader hero), featured,
+     *   url (original source link), keyFacts (array of short strings),
+     *   body (array of paragraph strings, full unedited article text)
+     * All text below is placeholder content for layout testing only.
      * ------------------------------------------------------------------ */
+    const pic = (seed, w, h) => `https://picsum.photos/seed/${seed}/${w}/${h}`;
+
     const CATEGORIES = [
       { id: 'latest',     label: 'Latest' },
       { id: 'politics',   label: 'Politics' },
@@ -123,75 +185,186 @@
         id: 'a1', category: 'politics', categoryLabel: 'World', featured: true,
         headline: 'Global leaders reach landmark agreement on cross-border AI safety standards',
         publisher: 'Reuters', readMinutes: 3, minutesAgo: 18,
-        image: 'https://picsum.photos/seed/world-summit/900/700'
+        image: pic('world-summit', 300, 300), imageLarge: pic('world-summit', 900, 600),
+        url: 'https://example.com/story-a1',
+        keyFacts: [
+          'Representatives from dozens of countries signed a shared framework for testing advanced AI systems.',
+          'The agreement sets common reporting rules for safety evaluations before large models are released.',
+          'Enforcement stays with each country, with a review meeting planned in twelve months.'
+        ],
+        body: [
+          'Delegates from dozens of countries concluded a two-day summit by signing a framework that sets shared expectations for how advanced AI systems are tested and reported on before public release.',
+          'Under the agreement, developers of the largest models would share the results of safety evaluations with a designated authority in their home country, which in turn would exchange summaries with partner governments.',
+          'Officials stressed that the framework does not create a new international regulator. Each country will decide how to enforce the standards domestically, and a follow-up meeting is planned in twelve months to review progress.',
+          'Industry groups welcomed the clarity but asked for more detail on how smaller developers would be treated. Civil society organizations said the text leaves room for uneven enforcement.'
+        ]
       },
       {
         id: 'a2', category: 'technology', categoryLabel: 'Technology',
         headline: 'Chipmakers race to ship next-generation low-power processors for phones',
         publisher: 'The Verge', readMinutes: 4, minutesAgo: 42,
-        image: 'https://picsum.photos/seed/chip-tech/300/300'
+        image: pic('chip-tech', 300, 300), imageLarge: pic('chip-tech', 900, 600),
+        url: 'https://example.com/story-a2',
+        keyFacts: [
+          'Several chipmakers announced new mobile processors focused on battery efficiency.',
+          'Gains come mainly from smaller manufacturing processes and dedicated on-chip AI hardware.',
+          'First devices with the new chips are expected within the next few months.'
+        ],
+        body: [
+          'A wave of new mobile processors was announced this week, with every major chipmaker emphasizing the same goal: more performance without draining the battery faster.',
+          'Most of the gains come from a move to smaller manufacturing processes and from dedicated hardware that handles AI tasks more efficiently than a general-purpose core.',
+          'Analysts say the competition benefits phone makers, who can promise longer battery life without increasing battery size. First devices carrying the new chips are expected within the next few months.'
+        ]
       },
       {
         id: 'a3', category: 'sports', categoryLabel: 'Sports',
         headline: 'Late goal secures dramatic comeback win in the league title race',
         publisher: 'ESPN', readMinutes: 2, minutesAgo: 75,
-        image: 'https://picsum.photos/seed/soccer-goal/300/300'
+        image: pic('soccer-goal', 300, 300), imageLarge: pic('soccer-goal', 900, 600),
+        url: 'https://example.com/story-a3',
+        keyFacts: [
+          'The home side trailed at halftime before scoring twice in the second half.',
+          'The winning goal arrived in stoppage time.',
+          'The result moves the team level on points at the top of the table.'
+        ],
+        body: [
+          'A stoppage-time goal completed a comeback that keeps the title race wide open, after the home side trailed at halftime.',
+          'The equalizer came midway through the second half from a well-worked corner, and the winner followed after sustained pressure in the closing minutes.',
+          'The result lifts the team level on points with the leaders, with a direct meeting between the two sides scheduled later in the season.'
+        ]
       },
       {
         id: 'a4', category: 'politics', categoryLabel: 'Politics',
         headline: 'Senate committee advances bipartisan infrastructure funding package',
         publisher: 'AP News', readMinutes: 5, minutesAgo: 110,
-        image: 'https://picsum.photos/seed/capitol-hill/300/300'
+        image: pic('capitol-hill', 300, 300), imageLarge: pic('capitol-hill', 900, 600),
+        url: 'https://example.com/story-a4',
+        keyFacts: [
+          'A Senate committee voted to send a funding package to the full chamber.',
+          'The bill covers roads, bridges, and broadband expansion.',
+          'A floor vote has not yet been scheduled.'
+        ],
+        body: [
+          'A Senate committee voted to advance a bipartisan infrastructure funding package, sending the bill to the full chamber for consideration.',
+          'The package would direct money toward road and bridge repair as well as broadband expansion in underserved areas, with a portion reserved for state-level project grants.',
+          'Supporters described the vote as a sign that compromise is still possible on major spending bills. Opponents raised concerns about the overall cost, and leaders have not yet scheduled a floor vote.'
+        ]
       },
       {
         id: 'a5', category: 'technology', categoryLabel: 'Technology',
         headline: 'Open-source security team patches critical flaw affecting popular web servers',
         publisher: 'Ars Technica', readMinutes: 4, minutesAgo: 160,
-        image: 'https://picsum.photos/seed/cyber-security/300/300'
+        image: pic('cyber-security', 300, 300), imageLarge: pic('cyber-security', 900, 600),
+        url: 'https://example.com/story-a5',
+        keyFacts: [
+          'A critical vulnerability was found in widely used open-source web server software.',
+          'A patched version has been released and administrators are urged to update.',
+          'No confirmed large-scale exploitation has been reported so far.'
+        ],
+        body: [
+          'Maintainers of a widely used open-source web server released an emergency update to fix a critical vulnerability that could let attackers run code on affected systems.',
+          'The flaw was reported privately by a security researcher, giving the team time to prepare a fix before details became public.',
+          'Administrators are urged to update as soon as possible. The maintainers said they have seen no confirmed large-scale exploitation, but warned that attackers often move quickly once a patch reveals where the problem lies.'
+        ]
       },
       {
         id: 'a6', category: 'sports', categoryLabel: 'Sports',
         headline: 'Rookie guard posts career-high points as home team extends win streak',
         publisher: 'The Athletic', readMinutes: 3, minutesAgo: 230,
-        image: 'https://picsum.photos/seed/basketball-court/300/300'
+        image: pic('basketball-court', 300, 300), imageLarge: pic('basketball-court', 900, 600),
+        url: 'https://example.com/story-a6',
+        keyFacts: [
+          'The rookie guard set a new career high in scoring.',
+          'The win was the home team\'s fifth in a row.',
+          'The team now sits comfortably inside the playoff places.'
+        ],
+        body: [
+          'A rookie guard scored a career-high night to lead the home team to its fifth straight win.',
+          'He shot efficiently from the perimeter and added several assists, helping the team pull away in the third quarter.',
+          'The victory keeps the team comfortably inside the playoff places, and coaches praised the bench for holding the lead late.'
+        ]
       },
       {
         id: 'a7', category: 'politics', categoryLabel: 'World',
         headline: 'Climate talks resume as nations weigh updated emissions targets',
         publisher: 'BBC News', readMinutes: 6, minutesAgo: 300,
-        image: 'https://picsum.photos/seed/climate-talks/300/300'
+        image: pic('climate-talks', 300, 300), imageLarge: pic('climate-talks', 900, 600),
+        url: 'https://example.com/story-a7',
+        keyFacts: [
+          'Negotiators returned to the table to discuss revised national emissions targets.',
+          'Funding for developing nations remains the main sticking point.',
+          'A draft text is expected by the end of the week.'
+        ],
+        body: [
+          'Negotiators returned to the table this week to discuss revised national emissions targets, with many delegations arriving with updated commitments.',
+          'Funding for developing nations remains the central disagreement. Wealthier countries are being pressed to clarify how much support they will provide and on what timeline.',
+          'Organizers expect a draft text by the end of the week, though observers caution that the most difficult questions are often left until the final hours.'
+        ]
       },
       {
         id: 'a8', category: 'technology', categoryLabel: 'Technology',
         headline: 'New on-device language models promise faster, more private assistants',
         publisher: 'Wired', readMinutes: 5, minutesAgo: 380,
-        image: 'https://picsum.photos/seed/ondevice-ai/300/300'
+        image: pic('ondevice-ai', 300, 300), imageLarge: pic('ondevice-ai', 900, 600),
+        url: 'https://example.com/story-a8',
+        keyFacts: [
+          'Smaller language models are now able to run directly on phones and laptops.',
+          'Running locally cuts response time and keeps personal data on the device.',
+          'Capability still trails the largest cloud-based models on complex tasks.'
+        ],
+        body: [
+          'Advances in model compression are making it practical to run capable language models directly on phones and laptops, without sending requests to a remote server.',
+          'Running locally cuts response time and keeps personal data on the device, two benefits that appeal to privacy-conscious users and to developers building offline features.',
+          'The trade-off is capability: the smaller models still trail the largest cloud-based systems on complex reasoning, so many apps are expected to combine both approaches.'
+        ]
       }
     ];
 
     /* ------------------------------ State ------------------------------ */
     const STORAGE_KEY = 'di_bookmarks_v1';
+    const PREFS_KEY = 'di_reader_prefs_v1';
+    const FONT_STACKS = {
+      atkinson: "'Atkinson Hyperlegible', 'Inter', system-ui, sans-serif",
+      inter: "'Inter', system-ui, sans-serif"
+    };
+    const SIZES = [16, 18, 20, 22, 24];
+
     const state = {
       tab: 'latest',
-      bookmarks: new Set(loadBookmarks())
+      view: 'home',          // 'home' | 'reader'
+      articleId: null,
+      feedScroll: 0,
+      cameFromFeed: false,
+      bookmarks: new Set(loadJSON(STORAGE_KEY, [])),
+      prefs: Object.assign({ font: 'atkinson', sizeIndex: 1 }, loadJSON(PREFS_KEY, {}))
     };
 
-    function loadBookmarks() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-      catch (e) { return []; }
+    function loadJSON(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+      catch (e) { return fallback; }
     }
-    function saveBookmarks() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...state.bookmarks])); }
+    function saveJSON(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); }
       catch (e) { /* storage unavailable: keep in-memory only */ }
     }
+    const saveBookmarks = () => saveJSON(STORAGE_KEY, [...state.bookmarks]);
+    const savePrefs = () => saveJSON(PREFS_KEY, state.prefs);
 
     /* ------------------------------ Helpers ---------------------------- */
     const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
 
     function esc(str) {
       return String(str).replace(/[&<>"']/g, (c) => (
         { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
       ));
+    }
+
+    function safeUrl(u) {
+      try {
+        const parsed = new URL(u);
+        return (parsed.protocol === 'https:' || parsed.protocol === 'http:') ? parsed.href : '#';
+      } catch (e) { return '#'; }
     }
 
     function timeAgo(mins) {
@@ -208,8 +381,8 @@
       return 0;
     }
 
-    function bookmarkIcon(active) {
-      return `<svg class="h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+    function bookmarkIcon(active, size = 'h-6 w-6') {
+      return `<svg class="${size}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
         fill="${active ? 'currentColor' : 'none'}" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round"
           d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"/>
@@ -225,20 +398,24 @@
       toastTimer = setTimeout(() => el.classList.add('opacity-0', 'translate-y-2'), 1800);
     }
 
-    /* ------------------------------ Render ----------------------------- */
+    /* ---------------------------- Home render -------------------------- */
     function renderHero() {
       const a = ARTICLES.find((x) => x.featured) || ARTICLES[0];
       if (!a) { $('#hero').innerHTML = ''; return; }
       const saved = state.bookmarks.has(a.id);
       $('#hero').innerHTML = `
         <article class="relative h-80 overflow-hidden rounded-[28px] bg-ink shadow-lg shadow-black/10">
-          <img src="${esc(a.image)}" alt="" class="absolute inset-0 h-full w-full object-cover" loading="eager" />
+          <img src="${esc(a.imageLarge || a.image)}" alt="" class="absolute inset-0 h-full w-full object-cover" loading="eager" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/10"></div>
 
-          <div class="absolute inset-x-0 top-0 flex items-start justify-between p-4">
+          <!-- Whole card opens the article -->
+          <a href="#/article/${encodeURIComponent(a.id)}" aria-label="Read: ${esc(a.headline)}"
+             class="absolute inset-0 z-10 rounded-[28px]"></a>
+
+          <div class="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between p-4">
             <span class="rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink">${esc(a.categoryLabel)}</span>
             <button type="button" data-bookmark="${esc(a.id)}" aria-pressed="${saved}" aria-label="${saved ? 'Remove bookmark' : 'Bookmark story'}"
-              class="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-ink backdrop-blur active:scale-95 transition">
+              class="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-ink backdrop-blur active:scale-95 transition">
               ${bookmarkIcon(saved)}
             </button>
           </div>
@@ -275,7 +452,7 @@
       $('#feed').innerHTML = items.map((a) => {
         const saved = state.bookmarks.has(a.id);
         return `
-        <article class="flex gap-4 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-black/5">
+        <article class="relative flex gap-4 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-black/5">
           <img src="${esc(a.image)}" alt="" loading="lazy"
             class="h-28 w-28 shrink-0 rounded-2xl bg-ink/5 object-cover" />
           <div class="flex min-w-0 flex-1 flex-col justify-between py-0.5">
@@ -285,12 +462,15 @@
                 <span aria-hidden="true">•</span><span>${a.readMinutes} min</span>
                 <span aria-hidden="true">•</span><span>${timeAgo(minutesSince(a))}</span>
               </p>
-              <h3 class="clamp-3 text-[15px] font-bold leading-snug">${esc(a.headline)}</h3>
+              <h3 class="clamp-3 text-[15px] font-bold leading-snug">
+                <a href="#/article/${encodeURIComponent(a.id)}"
+                   class="after:absolute after:inset-0 after:rounded-3xl focus-visible:after:ring-2 focus-visible:after:ring-accent">${esc(a.headline)}</a>
+              </h3>
             </div>
             <div class="mt-1 flex items-center justify-between">
               <span class="truncate text-xs font-medium text-ink/50">${esc(a.publisher)}</span>
               <button type="button" data-bookmark="${esc(a.id)}" aria-pressed="${saved}" aria-label="${saved ? 'Remove bookmark' : 'Bookmark story'}"
-                class="-mr-1 flex h-12 w-12 items-center justify-center rounded-full ${saved ? 'text-accent' : 'text-ink/40'} active:scale-95 transition">
+                class="relative z-10 -mr-1 flex h-12 w-12 items-center justify-center rounded-full ${saved ? 'text-accent' : 'text-ink/40'} active:scale-95 transition">
                 ${bookmarkIcon(saved)}
               </button>
             </div>
@@ -306,12 +486,200 @@
       b.classList.toggle('hidden', n === 0);
     }
 
-    function renderAll() {
+    function renderHome() {
       renderHero(); renderTabs(); renderFeed(); renderBadge();
     }
 
+    /* --------------------------- Reader render ------------------------- */
+    function renderReader() {
+      const a = ARTICLES.find((x) => x.id === state.articleId);
+      const el = $('#readerContent');
+
+      if (!a) {
+        el.innerHTML = `
+          <div class="py-20 text-center">
+            <p class="mb-2 text-xl font-bold">Story not found</p>
+            <p class="mb-6 text-ink/60">It may have rotated out of today's brief.</p>
+            <button type="button" data-back class="h-12 rounded-full bg-ink px-6 font-semibold text-white">Back to feed</button>
+          </div>`;
+        updateReaderBookmark();
+        return;
+      }
+
+      const facts = (a.keyFacts || []).map((f, i) => `
+        <li class="flex gap-3">
+          <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">${i + 1}</span>
+          <span>${esc(f)}</span>
+        </li>`).join('');
+
+      const paragraphs = (a.body || []).map((p) => `<p>${esc(p)}</p>`).join('');
+
+      el.innerHTML = `
+        <article>
+          <img src="${esc(a.imageLarge || a.image)}" alt="" class="mb-5 h-52 w-full rounded-3xl bg-ink/5 object-cover" />
+
+          <p class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-ink/60">
+            <span class="rounded-full bg-accent px-3 py-1 font-bold uppercase tracking-wide text-white">${esc(a.categoryLabel)}</span>
+            <span>${a.readMinutes} min read</span><span aria-hidden="true">•</span>
+            <span>${timeAgo(minutesSince(a))}</span>
+          </p>
+
+          <h1 class="mb-3 text-[26px] font-extrabold leading-tight tracking-tight">${esc(a.headline)}</h1>
+          <p class="mb-6 text-sm font-semibold text-ink/60">${esc(a.publisher)}</p>
+
+          <!-- Executive Key Facts box -->
+          <section aria-labelledby="kf-title" class="mb-6 rounded-3xl border border-accent/20 bg-[#EEF1FD] p-5">
+            <h2 id="kf-title" class="mb-3 flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-accent">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" /></svg>
+              Key Facts
+            </h2>
+            <ol class="reader-facts flex flex-col gap-3">${facts}</ol>
+          </section>
+
+          <!-- Direct source link -->
+          <a href="${esc(safeUrl(a.url))}" target="_blank" rel="noopener noreferrer"
+             class="mb-8 flex h-14 items-center justify-between rounded-2xl bg-ink px-5 font-semibold text-white active:scale-[0.99] transition">
+            <span>Read original at ${esc(a.publisher)}</span>
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+          </a>
+
+          <!-- Full article text -->
+          <div class="mb-2 text-xs font-bold uppercase tracking-wider text-ink/40">Full article</div>
+          <div class="reader-body">${paragraphs}</div>
+
+          <!-- Clear ending -->
+          <div class="mt-10 rounded-3xl bg-white p-6 text-center ring-1 ring-black/5">
+            <p class="mb-1 text-lg font-bold">That's the story.</p>
+            <p class="mb-5 text-sm text-ink/60">You're done with this one.</p>
+            <button type="button" data-back class="h-12 w-full rounded-full bg-ink px-6 font-semibold text-white active:scale-[0.99] transition">Back to feed</button>
+          </div>
+        </article>`;
+
+      updateReaderBookmark();
+    }
+
+    function updateReaderBookmark() {
+      const btn = $('#readerBookmark');
+      const id = state.articleId;
+      const saved = id ? state.bookmarks.has(id) : false;
+      btn.dataset.bookmark = id || '';
+      btn.setAttribute('aria-pressed', String(saved));
+      btn.setAttribute('aria-label', saved ? 'Remove bookmark' : 'Bookmark story');
+      btn.classList.toggle('text-accent', saved);
+      btn.innerHTML = bookmarkIcon(saved);
+      btn.classList.toggle('hidden', !id || !ARTICLES.some((x) => x.id === id));
+    }
+
+    /* ---------------------------- Reader prefs ------------------------- */
+    function applyPrefs() {
+      const root = document.documentElement;
+      root.style.setProperty('--reader-font', FONT_STACKS[state.prefs.font] || FONT_STACKS.atkinson);
+      root.style.setProperty('--reader-size', SIZES[state.prefs.sizeIndex] + 'px');
+      $('#sizeLabel').textContent = SIZES[state.prefs.sizeIndex];
+      $$('[data-font]').forEach((b) => {
+        const on = b.dataset.font === state.prefs.font;
+        b.classList.toggle('bg-ink', on);
+        b.classList.toggle('text-white', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    }
+
+    function setPrefsOpen(open) {
+      $('#prefsPanel').classList.toggle('hidden', !open);
+      $('#prefsToggle').setAttribute('aria-expanded', String(open));
+    }
+
+    /* ------------------------------ Router ----------------------------- */
+    function route() {
+      const m = location.hash.match(/^#\/article\/(.+)$/);
+      if (m) showReader(decodeURIComponent(m[1]));
+      else showHome();
+    }
+
+    function showReader(id) {
+      if (state.view === 'home') {
+        state.feedScroll = window.scrollY;
+        state.cameFromFeed = true;
+      }
+      state.view = 'reader';
+      state.articleId = id;
+
+      $('#homeView').classList.add('hidden');
+      $('#readerView').classList.remove('hidden');
+      $('#bottomNav').classList.add('hidden');
+      setPrefsOpen(false);
+
+      renderReader();
+      const a = ARTICLES.find((x) => x.id === id);
+      document.title = a ? a.headline + ' · Daily Intelligence' : 'Daily Intelligence';
+      window.scrollTo(0, 0);
+      updateProgress();
+    }
+
+    function showHome() {
+      const wasReader = state.view === 'reader';
+      state.view = 'home';
+      state.articleId = null;
+
+      $('#readerView').classList.add('hidden');
+      $('#homeView').classList.remove('hidden');
+      $('#bottomNav').classList.remove('hidden');
+      setPrefsOpen(false);
+      document.title = 'Daily Intelligence';
+
+      renderHome();
+      if (wasReader) {
+        requestAnimationFrame(() => window.scrollTo(0, state.feedScroll));
+      }
+    }
+
+    function goBack() {
+      if (state.cameFromFeed && history.length > 1) history.back();
+      else location.hash = '#/';
+    }
+
+    /* --------------------------- Progress bar -------------------------- */
+    let progressTick = false;
+    function updateProgress() {
+      const bar = $('#progress');
+      if (state.view !== 'reader') { bar.style.width = '0%'; return; }
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? Math.min(100, Math.max(0, (window.scrollY / max) * 100)) : 0;
+      bar.style.width = pct + '%';
+    }
+    window.addEventListener('scroll', () => {
+      if (progressTick) return;
+      progressTick = true;
+      requestAnimationFrame(() => { updateProgress(); progressTick = false; });
+    }, { passive: true });
+
     /* ------------------------------ Events ----------------------------- */
     document.addEventListener('click', (e) => {
+      // Close the text-settings panel when tapping elsewhere
+      if (!e.target.closest('#prefsPanel') && !e.target.closest('#prefsToggle')) setPrefsOpen(false);
+
+      if (e.target.closest('#prefsToggle')) {
+        setPrefsOpen($('#prefsPanel').classList.contains('hidden'));
+        return;
+      }
+
+      const fontBtn = e.target.closest('[data-font]');
+      if (fontBtn) {
+        state.prefs.font = fontBtn.dataset.font;
+        savePrefs(); applyPrefs();
+        return;
+      }
+
+      const sizeBtn = e.target.closest('[data-size]');
+      if (sizeBtn) {
+        const next = state.prefs.sizeIndex + Number(sizeBtn.dataset.size);
+        state.prefs.sizeIndex = Math.min(SIZES.length - 1, Math.max(0, next));
+        savePrefs(); applyPrefs();
+        return;
+      }
+
+      if (e.target.closest('[data-back]')) { goBack(); return; }
+
       const tabBtn = e.target.closest('[data-tab]');
       if (tabBtn) {
         state.tab = tabBtn.dataset.tab;
@@ -320,12 +688,13 @@
       }
 
       const bm = e.target.closest('[data-bookmark]');
-      if (bm) {
+      if (bm && bm.dataset.bookmark) {
         const id = bm.dataset.bookmark;
         if (state.bookmarks.has(id)) { state.bookmarks.delete(id); toast('Removed from saved'); }
         else { state.bookmarks.add(id); toast('Saved for later'); }
         saveBookmarks();
-        renderHero(); renderFeed(); renderBadge();
+        if (state.view === 'reader') updateReaderBookmark();
+        else renderHome();
         return;
       }
 
@@ -336,11 +705,21 @@
       }
     });
 
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        setPrefsOpen(false);
+      }
+    });
+
+    window.addEventListener('hashchange', route);
+
     /* ------------------------------ Init ------------------------------- */
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     $('#todayLabel').textContent = new Date().toLocaleDateString(undefined, {
       weekday: 'long', month: 'short', day: 'numeric'
     });
-    renderAll();
+    applyPrefs();
+    route();
   </script>
 </body>
 </html>
