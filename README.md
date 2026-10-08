@@ -1,2 +1,2 @@
 # tailored-news
-ADHD-friendly news PWA that turns breaking world, tech, and sports stories into AI-generated Key Facts summaries in a clean, high-focus reading interface.
+Personal news Progressive Web App for readers with ADHD. Includes breaking world/politics, technology, sports, and gaming news via RSS, summarizes each story with Gemini 2.5 Flash, and presents it with a "Key Facts" box, clear and easy to digest paragraph formatting, and bookmarks. Built with HTML, Tailwind CSS, JavaScript, Python, with a Python and GitHub Actions pipeline generating the daily feed.
