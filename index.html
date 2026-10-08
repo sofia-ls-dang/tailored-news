@@ -181,15 +181,18 @@
 
   <script>
     /* ------------------------------------------------------------------
-     * MOCK DATA
-     * Swap this array for the fetched brief.json later, e.g.:
-     *   const ARTICLES = (await (await fetch('brief.json')).json()).articles;
-     * Expected fields per article:
-     *   id, category ('politics'|'technology'|'sports'), categoryLabel,
+     * DATA
+     * On load the app fetches brief.json (written by scripts/build_brief.py).
+     * If that file is missing or can't be read (for example when previewing
+     * by double-clicking index.html), it falls back to the placeholder
+     * stories below.
+     * Fields per article:
+     *   id, category ('politics'|'technology'|'sports'|'gaming'), categoryLabel,
      *   headline, publisher, readMinutes, minutesAgo (or publishedAt ISO),
      *   image (thumbnail), imageLarge (optional, reader hero), featured,
      *   url (original source link), keyFacts (array of short strings),
      *   body (array of paragraph strings, full unedited article text)
+     *   fullText (false when only a preview could be retrieved), lean (politics only)
      * All text below is placeholder content for layout testing only.
      * ------------------------------------------------------------------ */
     const pic = (seed, w, h) => `https://picsum.photos/seed/${seed}/${w}/${h}`;
@@ -198,10 +201,11 @@
       { id: 'latest',     label: 'Latest' },
       { id: 'politics',   label: 'Politics' },
       { id: 'technology', label: 'Technology' },
-      { id: 'sports',     label: 'Sports' }
+      { id: 'sports',     label: 'Sports' },
+      { id: 'gaming',     label: 'Gaming' }
     ];
 
-    const ARTICLES = [
+    let ARTICLES = [
       {
         id: 'a1', category: 'politics', categoryLabel: 'World', featured: true,
         headline: 'Global leaders reach landmark agreement on cross-border AI safety standards',
@@ -338,6 +342,40 @@
           'Running locally cuts response time and keeps personal data on the device, two benefits that appeal to privacy-conscious users and to developers building offline features.',
           'The trade-off is capability: the smaller models still trail the largest cloud-based systems on complex reasoning, so many apps are expected to combine both approaches.'
         ]
+      },
+      {
+        id: 'a9', category: 'gaming', categoryLabel: 'Gaming',
+        headline: 'Studio confirms release window for long-awaited open-world sequel',
+        publisher: 'IGN', readMinutes: 3, minutesAgo: 410,
+        image: pic('open-world-game', 300, 300), imageLarge: pic('open-world-game', 900, 600),
+        url: 'https://example.com/story-a9',
+        keyFacts: [
+          'The developer announced a release window for its open-world sequel.',
+          'The game will launch on current consoles and PC at the same time.',
+          'A gameplay deep dive is planned for next month.'
+        ],
+        body: [
+          'The developer behind a popular open-world series confirmed a release window for its next game, ending months of speculation from fans.',
+          'The sequel will launch on current-generation consoles and PC on the same day, with no last-generation version planned.',
+          'A longer gameplay presentation is scheduled for next month, where the team says it will show the expanded map and new traversal systems.'
+        ]
+      },
+      {
+        id: 'a10', category: 'gaming', categoryLabel: 'Gaming',
+        headline: 'Indie co-op adventure tops sales charts in its first week',
+        publisher: 'Polygon', readMinutes: 4, minutesAgo: 520,
+        image: pic('indie-coop', 300, 300), imageLarge: pic('indie-coop', 900, 600),
+        url: 'https://example.com/story-a10',
+        keyFacts: [
+          'A small-studio co-op game reached the top of weekly sales charts.',
+          'Word of mouth and streamer coverage drove most of the early sales.',
+          'The team plans free content updates over the coming months.'
+        ],
+        body: [
+          'A co-op adventure from a small independent studio climbed to the top of the weekly sales charts, outselling several major releases.',
+          'The team credits word of mouth and streamers who played the game with friends, which helped it spread quickly in its first days.',
+          'The developers say they plan to add free content updates over the coming months based on player feedback.'
+        ]
       }
     ];
 
@@ -439,6 +477,15 @@
       return 0;
     }
 
+    // Image tile that degrades to a plain gray block when the image is missing or fails to load
+    function thumb(src, wrapCls) {
+      const img = src
+        ? `<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer"
+             class="h-full w-full object-cover" onerror="this.style.display='none'" />`
+        : '';
+      return `<div class="${wrapCls} overflow-hidden bg-ink/10">${img}</div>`;
+    }
+
     function bookmarkIcon(active, size = 'h-6 w-6') {
       return `<svg class="${size}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
         fill="${active ? 'currentColor' : 'none'}" aria-hidden="true">
@@ -463,7 +510,7 @@
       const saved = state.bookmarks.has(a.id);
       $('#hero').innerHTML = `
         <article class="relative h-80 overflow-hidden rounded-[28px] bg-ink shadow-lg shadow-black/10">
-          <img src="${esc(a.imageLarge || a.image)}" alt="" class="absolute inset-0 h-full w-full object-cover" loading="eager" />
+          ${(a.imageLarge || a.image) ? `<img src="${esc(a.imageLarge || a.image)}" alt="" referrerpolicy="no-referrer" class="absolute inset-0 h-full w-full object-cover" loading="eager" onerror="this.style.display='none'" />` : ''}
           <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/10"></div>
 
           <!-- Whole card opens the article -->
@@ -515,8 +562,7 @@
         const saved = state.bookmarks.has(a.id);
         return `
         <article class="relative flex items-center gap-4 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-black/5 transition ${dimUnsaved && !saved ? 'opacity-60' : ''}">
-          <img src="${esc(a.image)}" alt="" loading="lazy"
-            class="h-28 w-28 shrink-0 rounded-2xl bg-ink/5 object-cover" />
+          ${thumb(a.image, 'h-28 w-28 shrink-0 rounded-2xl')}
           <div class="min-w-0 flex-1">
             <div>
               <p class="mb-1 flex flex-wrap items-center gap-x-2 pr-8 text-xs font-semibold text-ink/50">
@@ -584,7 +630,7 @@
 
       el.innerHTML = `
         <article>
-          <img src="${esc(a.imageLarge || a.image)}" alt="" class="mb-5 h-52 w-full rounded-3xl bg-ink/5 object-cover" />
+          ${(a.imageLarge || a.image) ? thumb(a.imageLarge || a.image, 'mb-5 h-52 w-full rounded-3xl') : ''}
 
           <p class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-ink/60">
             <span class="rounded-full bg-accent px-3 py-1 font-bold uppercase tracking-wide text-white">${esc(a.categoryLabel)}</span>
@@ -612,7 +658,8 @@
           </a>
 
           <!-- Full article text -->
-          <div class="mb-2 text-xs font-bold uppercase tracking-wider text-ink/40">Full article</div>
+          ${a.fullText === false ? `<p class="mb-4 rounded-2xl bg-[#FFF4E0] px-4 py-3 text-sm font-medium text-[#7A4B00]">Only a preview was available from ${esc(a.publisher)}. Tap "Read original" above for the complete story.</p>` : ''}
+          <div class="mb-2 text-xs font-bold uppercase tracking-wider text-ink/40">${a.fullText === false ? 'Preview' : 'Full article'}</div>
           <div class="reader-body">${paragraphs}</div>
 
           <!-- Clear ending -->
@@ -826,7 +873,21 @@
       weekday: 'long', month: 'short', day: 'numeric'
     });
     applyPrefs();
-    route();
+
+    // Load the real brief if it exists; otherwise keep the placeholder stories.
+    fetch('brief.json', { cache: 'no-cache' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('no brief'))))
+      .then((data) => {
+        if (data && Array.isArray(data.articles) && data.articles.length) {
+          ARTICLES = data.articles;
+          if (data.generatedAt) {
+            const mins = Math.max(0, Math.round((Date.now() - new Date(data.generatedAt)) / 60000));
+            $('#todayLabel').textContent += ' · Updated ' + timeAgo(mins);
+          }
+        }
+      })
+      .catch(() => { /* keep placeholder stories */ })
+      .finally(route);
   </script>
 </body>
 </html>
