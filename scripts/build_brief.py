@@ -368,7 +368,8 @@ def gemini_key_facts(client, title, publisher, paragraphs):
         response_schema=KeyFacts,
         temperature=0.2,
     )
-    for attempt in range(12):
+    soft_fails = 0
+    for attempt in range(6):
         wait = SECONDS_BETWEEN_AI_CALLS - (time.time() - _ai_state["last_call"])
         if wait > 0:
             time.sleep(wait)
@@ -379,6 +380,7 @@ def gemini_key_facts(client, title, publisher, paragraphs):
             facts = resp.parsed.key_facts if getattr(resp, "parsed", None) else json.loads(resp.text)["key_facts"]
             facts = [clean_text(f) for f in facts if f and f.strip()][:3]
             if facts:
+                _ai_state["give_ups"] = 0
                 return facts
         except Exception as e:  # noqa: BLE001
             msg = str(e)
@@ -399,8 +401,17 @@ def gemini_key_facts(client, title, publisher, paragraphs):
                 log("    Gemini rejected the API key: check the GEMINI_API_KEY secret")
                 _ai_state["disabled"] = True
                 return None
+            soft_fails += 1
             log(f"    Gemini attempt {attempt + 1} failed ({type(e).__name__}); retrying")
-            time.sleep(10 * (attempt + 1))
+            if soft_fails >= 2 and advance_model("keeps returning errors (overloaded?)"):
+                soft_fails = 0       # a different model may be healthy: try it right away
+                continue
+            time.sleep(5 * (attempt + 1))
+    # Gave up on this story. If this keeps happening, stop wasting the run.
+    _ai_state["give_ups"] = _ai_state.get("give_ups", 0) + 1
+    if _ai_state["give_ups"] >= 3:
+        log("    Gemini failed on 3 stories in a row: skipping AI for the rest of this run")
+        _ai_state["disabled"] = True
     return None
 
 
